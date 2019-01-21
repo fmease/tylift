@@ -1,0 +1,18 @@
+[package]
+name = "tylift"
+version = "0.1.0"
+description = "Lift enum variants to the type-level."
+license = "MIT"
+repository = "https://github.com/fmease/tylift"
+authors = ["León Orell Valerian Liehr <liehr.exchange@gmx.net>"]
+readme = "README.md"
+keywords = ["lift", "type", "kind", "enum"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "0.4.26"
+syn = "0.15.26"
+quote = "0.6.11"
