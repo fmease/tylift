@@ -19,8 +19,8 @@ unnamed fields of types of given kind. Lifted enum types cannot be generic over 
 The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
 are sealed, which means nobody is able to add new types to the kind.
 
-Attributes applied to the item itself (placed below `tylift`), its variants or fields of its
-variants will not be translated and have no effect.
+Attributes applied to the item itself (placed below `tylift`), its variants and fields of its
+variants will not be translated and have no effect. Explicit discriminants are ignored, too.
 
 ## First Example
 
@@ -88,7 +88,7 @@ pub(crate) enum Nat {
 #[tylift]
 enum BinaryTree {
     Leaf,
-    Branch(NatBTree, Nat, BinaryTree),
+    Branch(BinaryTree, Nat, BinaryTree),
 }
 ```
 
@@ -130,22 +130,22 @@ mod __tylift_enum_Nat {
     }
 }
 
-use self::__tylift_enum_NatBTree::*;
-mod __tylift_enum_NatBTree {
+use self::__tylift_enum_BinaryTree::*;
+mod __tylift_enum_BinaryTree {
     use super::*;
-    pub trait NatBTree: __sealed::__Sealed {}
+    pub trait BinaryTree: __sealed::__Sealed {}
     pub struct Leaf(!, ::std::marker::PhantomData<()>);
-    impl NatBTree for Leaf {}
-    pub struct Branch<__T0: NatBTree, __T1: Nat, __T2: NatBTree>(
+    impl BinaryTree for Leaf {}
+    pub struct Branch<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree>(
         !,
         ::std::marker::PhantomData<(__T0, __T1, __T2)>,
     );
-    impl<__T0: NatBTree, __T1: Nat, __T2: NatBTree> NatBTree for Branch<__T0, __T1, __T2> {}
+    impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> BinaryTree for Branch<__T0, __T1, __T2> {}
     mod __sealed {
         use super::*;
         pub trait __Sealed {}
         impl __Sealed for Leaf {}
-        impl<__T0: NatBTree, __T1: Nat, __T2: NatBTree> __Sealed for Branch<__T0, __T1, __T2> {}
+        impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> __Sealed for Branch<__T0, __T1, __T2> {}
     }
 }
 ```
