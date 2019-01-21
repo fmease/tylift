@@ -1,5 +1,9 @@
 # TyLift
 
+[![crate](https://img.shields.io/crates/v/tylift.svg)](https://crates.io/crates/tylift)
+[![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
+[![license](https://img.shields.io/github/license/fmease/tylift.svg)](https://crates.io/crates/tylift/)
+
 Lift enum variants to the type-level by simply adding the attribute `tylift`.
 This comes in handy for type-level programming. The crate you are looking at is
 brand new and far from polished!
@@ -11,10 +15,12 @@ mirror the syntax of type annotations in Rust. Thus, the snippet `B: Bool` can a
 read as "type parameter `B` of kind `Bool`".
 
 As of right now, there is no automated way to reify the lifted variants. Variants can hold
-unnamed fields of types of given kind. Lifted enum types (kinds) cannot be generic over
-kinds (yet). The promoted variants inherit the visibility of the lifted enum. Another issue
-concerns the implementation of kinds: They are not protected from being extended by parties who
-imported them. At least, they require an `unsafe impl` to be enlarged.
+unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
+The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
+are sealed, which means nobody is able to add new types to the kind.
+
+Attributes applied to the item itself (placed below `tylift`), its variants or fields of its
+variants will not be translated and have no effect.
 
 ## First Example
 
@@ -27,7 +33,7 @@ use std::marker::PhantomData;
 pub enum Mode {
     Slow,
     Normal,
-    Fast
+    Fast,
 }
 
 pub struct Machine<M: Mode>(PhantomData<M>);
@@ -56,7 +62,7 @@ experimental feature `never_type`. Add these lines to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tylift = "0.1.0"
+tylift = "0.2.0"
 ```
 
 ## More Examples
@@ -74,15 +80,15 @@ pub enum Bool {
 }
 
 #[tylift]
-enum Nat {
+pub(crate) enum Nat {
     Zero,
     Succ(Nat),
 }
 
 #[tylift]
-enum NatBTree {
+enum BinaryTree {
     Leaf,
-    Branch(NatBTree, Nat, NatBTree),
+    Branch(NatBTree, Nat, BinaryTree),
 }
 ```
 
@@ -92,32 +98,63 @@ And after:
 #![feature(never_type)]
 use tylift::tylift;
 
-pub unsafe trait Bool {}
-pub struct False(!, ::std::marker::PhantomData<()>);
-unsafe impl Bool for False {}
-pub struct True(!, ::std::marker::PhantomData<()>);
-unsafe impl Bool for True {}
+pub use self::__tylift_enum_Bool::*;
+mod __tylift_enum_Bool {
+    use super::*;
+    pub trait Bool: __sealed::__Sealed {}
+    pub struct False(!, ::std::marker::PhantomData<()>);
+    impl Bool for False {}
+    pub struct True(!, ::std::marker::PhantomData<()>);
+    impl Bool for True {}
+    mod __sealed {
+        use super::*;
+        pub trait __Sealed {}
+        impl __Sealed for False {}
+        impl __Sealed for True {}
+    }
+}
 
-unsafe trait Nat {}
-struct Zero(!, ::std::marker::PhantomData<()>);
-unsafe impl Nat for Zero {}
-struct Succ<__T0: Nat>(!, ::std::marker::PhantomData<(__T0)>);
-unsafe impl<__T0: Nat> Nat for Succ<__T0> {}
+pub(crate) use self::__tylift_enum_Nat::*;
+mod __tylift_enum_Nat {
+    use super::*;
+    pub trait Nat: __sealed::__Sealed {}
+    pub struct Zero(!, ::std::marker::PhantomData<()>);
+    impl Nat for Zero {}
+    pub struct Succ<__T0: Nat>(!, ::std::marker::PhantomData<(__T0)>);
+    impl<__T0: Nat> Nat for Succ<__T0> {}
+    mod __sealed {
+        use super::*;
+        pub trait __Sealed {}
+        impl __Sealed for Zero {}
+        impl<__T0: Nat> __Sealed for Succ<__T0> {}
+    }
+}
 
-unsafe trait NatBTree {}
-struct Leaf(!, ::std::marker::PhantomData<()>);
-unsafe impl NatBTree for Leaf {}
-struct Branch<__T0: NatBTree, __T1: Nat, __T2: NatBTree>(
-    !,
-    ::std::marker::PhantomData<(__T0, __T1, __T2)>,
-);
-unsafe impl<__T0: NatBTree, __T1: Nat, __T2: NatBTree> NatBTree for Branch<__T0, __T1, __T2> {}
+use self::__tylift_enum_NatBTree::*;
+mod __tylift_enum_NatBTree {
+    use super::*;
+    pub trait NatBTree: __sealed::__Sealed {}
+    pub struct Leaf(!, ::std::marker::PhantomData<()>);
+    impl NatBTree for Leaf {}
+    pub struct Branch<__T0: NatBTree, __T1: Nat, __T2: NatBTree>(
+        !,
+        ::std::marker::PhantomData<(__T0, __T1, __T2)>,
+    );
+    impl<__T0: NatBTree, __T1: Nat, __T2: NatBTree> NatBTree for Branch<__T0, __T1, __T2> {}
+    mod __sealed {
+        use super::*;
+        pub trait __Sealed {}
+        impl __Sealed for Leaf {}
+        impl<__T0: NatBTree, __T1: Nat, __T2: NatBTree> __Sealed for Branch<__T0, __T1, __T2> {}
+    }
+}
 ```
 
-## Tasks
+## Tasks and Plans
 
-* fix the issues mentioned above
-* better error messages
-* documentation
-* tests
-* additional features like type-level functions
+* improve the error messages
+* write documentation
+* create tests
+* add additional features like
+  * type-level functions
+  * reify-function generation
