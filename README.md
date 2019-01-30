@@ -149,7 +149,6 @@ mod __tylift_enum_BinaryTree {
 
 ## Tasks and Plans
 
-* improve the error messages
 * write documentation
 * create tests
 * add additional features like

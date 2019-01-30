@@ -1,5 +1,7 @@
 //! Lift enum variants to the type-level.
 
+#![cfg_attr(feature = "unstable", feature(proc_macro_diagnostic))]
+
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -26,6 +28,17 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
+        #[cfg(feature = "unstable")]
+        {
+            use syn::spanned::Spanned;
+            item.generics
+                .params
+                .span()
+                .unstable()
+                .error("type parameters cannot be lifted to the kind-level")
+                .emit();
+        }
+        #[cfg(not(feature = "unstable"))]
         panic!("type parameters cannot be lifted to the kind-level")
     }
 
@@ -33,12 +46,34 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for variant in &item.variants {
         if variant.ident == item.ident {
+            #[cfg(feature = "unstable")]
+            {
+                variant
+                    .ident
+                    .span()
+                    .unstable()
+                    .error("name of variant matches name of enum")
+                    .emit();
+                continue;
+            }
+            #[cfg(not(feature = "unstable"))]
             panic!("name of variant matches name of enum")
         }
         let mut field_names = Vec::new();
         let mut field_types = Vec::new();
         match &variant.fields {
             Fields::Named(_) => {
+                #[cfg(feature = "unstable")]
+                {
+                    variant
+                        .ident
+                        .span()
+                        .unstable()
+                        .error("variant must not have named fields")
+                        .emit();
+                    continue;
+                }
+                #[cfg(not(feature = "unstable"))]
                 panic!("variant must not have named fields")
             }
             Fields::Unnamed(unnamed) => {
