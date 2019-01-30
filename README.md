@@ -2,6 +2,7 @@
 
 [![crate](https://img.shields.io/crates/v/tylift.svg)](https://crates.io/crates/tylift)
 [![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
+[![rustc](https://img.shields.io/badge/rustc-1.32+-red.svg)](https://blog.rust-lang.org/2019/01/17/Rust-1.32.0.html)
 [![license](https://img.shields.io/github/license/fmease/tylift.svg)](https://crates.io/crates/tylift/)
 
 Lift enum variants to the type-level by simply adding the attribute `tylift`.
@@ -57,8 +58,7 @@ impl Machine<Fast> {
 
 ## Installation
 
-Currently only tested with `rustc` 1.33 (nightly), 2018 edition. Requires the
-experimental feature `never_type`. Add these lines to your `Cargo.toml`:
+Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these lines to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -70,7 +70,6 @@ tylift = "0.2.0"
 Code before the macro expansion:
 
 ```rust
-#![feature(never_type)]
 use tylift::tylift;
 
 #[tylift]
@@ -95,16 +94,15 @@ enum BinaryTree {
 And after:
 
 ```rust
-#![feature(never_type)]
 use tylift::tylift;
 
-pub use self::__tylift_enum_Bool::*;
+pub use __tylift_enum_Bool::*;
 mod __tylift_enum_Bool {
     use super::*;
     pub trait Bool: __sealed::__Sealed {}
-    pub struct False(!, ::std::marker::PhantomData<()>);
+    pub struct False(::std::marker::PhantomData<()>);
     impl Bool for False {}
-    pub struct True(!, ::std::marker::PhantomData<()>);
+    pub struct True(::std::marker::PhantomData<()>);
     impl Bool for True {}
     mod __sealed {
         use super::*;
@@ -114,13 +112,13 @@ mod __tylift_enum_Bool {
     }
 }
 
-pub(crate) use self::__tylift_enum_Nat::*;
+pub(crate) use __tylift_enum_Nat::*;
 mod __tylift_enum_Nat {
     use super::*;
     pub trait Nat: __sealed::__Sealed {}
-    pub struct Zero(!, ::std::marker::PhantomData<()>);
+    pub struct Zero(::std::marker::PhantomData<()>);
     impl Nat for Zero {}
-    pub struct Succ<__T0: Nat>(!, ::std::marker::PhantomData<(__T0)>);
+    pub struct Succ<__T0: Nat>(::std::marker::PhantomData<(__T0)>);
     impl<__T0: Nat> Nat for Succ<__T0> {}
     mod __sealed {
         use super::*;
@@ -130,14 +128,13 @@ mod __tylift_enum_Nat {
     }
 }
 
-use self::__tylift_enum_BinaryTree::*;
+use __tylift_enum_BinaryTree::*;
 mod __tylift_enum_BinaryTree {
     use super::*;
     pub trait BinaryTree: __sealed::__Sealed {}
-    pub struct Leaf(!, ::std::marker::PhantomData<()>);
+    pub struct Leaf(::std::marker::PhantomData<()>);
     impl BinaryTree for Leaf {}
     pub struct Branch<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree>(
-        !,
         ::std::marker::PhantomData<(__T0, __T1, __T2)>,
     );
     impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> BinaryTree for Branch<__T0, __T1, __T2> {}
