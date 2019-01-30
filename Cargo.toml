@@ -1,19 +1,23 @@
 [package]
 name = "tylift"
-version = "0.2.0"
+version = "0.3.0"
 description = "Lift enum variants to the type-level."
 license = "MIT"
 repository = "https://github.com/fmease/tylift"
 authors = ["León Orell Valerian Liehr <liehr.exchange@gmx.net>"]
 readme = "README.md"
-keywords = ["lift", "type", "kind", "enum"]
+keywords = ["lift", "type", "kind", "enum", "macro"]
 edition = "2018"
 
 [features]
-unstable = []
+span_errors = []
 
 [lib]
 proc-macro = true
+
+# [[test]]
+# name = "tests"
+# path = "src/tests.rs"
 
 [dependencies]
 proc-macro2 = "0.4.26"

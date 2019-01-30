@@ -11,8 +11,8 @@ brand new and far from polished!
 
 The attribute promotes variants to their own types which will not be namespaced
 by current design. The enum type becomes a kind emulated by a trait. In the
-process, the original type gets replaced. The syntax of trait bounds (`:`) beautifully
-mirror the syntax of type annotations in Rust. Thus, the snippet `B: Bool` can also be
+process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
+mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be
 read as "type parameter `B` of kind `Bool`".
 
 As of right now, there is no automated way to reify the lifted variants. Variants can hold
@@ -26,33 +26,49 @@ variants will not be translated and have no effect. Explicit discriminants are i
 ## First Example
 
 ```rust
-#![feature(never_type)]
 use tylift::tylift;
 use std::marker::PhantomData;
 
 #[tylift]
 pub enum Mode {
-    Slow,
-    Normal,
+    Safe,
     Fast,
 }
 
-pub struct Machine<M: Mode>(PhantomData<M>);
-
-impl<M: Mode> Machine<M> {
-    fn new() -> Self { Machine(PhantomData) }
+pub struct Text<M: Mode> {
+    content: String,
+    _marker: PhantomData<M>,
 }
 
-impl Machine<Slow> {
-    fn motivate(&self) -> Result<(), ()> {
-        unimplemented!()
+impl<M: Mode> Text<M> {
+    pub fn into_inner(self) -> String {
+        self.content
     }
 }
 
-impl Machine<Fast> {
-    fn keep_at_bay(&self) -> Result<(), ()> {
-        unimplemented!()
+impl Text<Safe> {
+    pub fn from(content: Vec<u8>) -> Option<Self> {
+        Some(Self {
+            content: String::from_utf8(content).ok()?,
+            _marker: PhantomData,
+        })
     }
+}
+
+impl Text<Fast> {
+    pub fn from(content: Vec<u8>) -> Self {
+        Self {
+            content: unsafe { String::from_utf8_unchecked(content) },
+            _marker: PhantomData,
+        }
+    }
+}
+
+fn main() {
+    let safe = Text::<Safe>::from(vec![0x73, 0x61, 0x66, 0x65]);
+    let fast = Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]);
+    assert_eq!(safe.map(Text::into_inner), Some("safe".to_owned()));
+    assert_eq!(fast.into_inner(), "fast".to_owned());
 }
 ```
 
@@ -62,7 +78,7 @@ Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these 
 
 ```toml
 [dependencies]
-tylift = "0.2.0"
+tylift = "0.3.0"
 ```
 
 ## More Examples
@@ -149,7 +165,6 @@ mod __tylift_enum_BinaryTree {
 
 ## Tasks and Plans
 
-* write documentation
 * create tests
 * add additional features like
   * type-level functions

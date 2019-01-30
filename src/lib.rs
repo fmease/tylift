@@ -1,6 +1,13 @@
-//! Lift enum variants to the type-level.
+//! This is a libary for making type-level programming more ergonomic.
+//! With the attribute `tylift`, one can lift variants of an `enum` to the type-level.
+//!
+//! ## Optional Features
+//!
+//! The feature-flag `span_errors` drastically improves error messages by taking
+//! advantage of the span information of a token. It uses the experimental feature
+//! `proc_macro_diagnostic` and thus requires a nightly `rustc`.
 
-#![cfg_attr(feature = "unstable", feature(proc_macro_diagnostic))]
+#![cfg_attr(feature = "span_errors", feature(proc_macro_diagnostic))]
 
 extern crate proc_macro;
 
@@ -22,13 +29,72 @@ fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
     quote! { mod #name { #content } }
 }
 
-/// Lift enum variants to the type-level.
+/// The attribute promotes variants to their own types which will not be namespaced
+/// by current design. The enum type becomes a kind emulated by a trait. In the
+/// process, the original type gets replaced.
+///
+/// As of right now, there is no automated way to reify the lifted variants. Variants can hold
+/// unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
+/// The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
+/// are sealed, which means nobody is able to add new types to the kind.
+///
+/// Attributes applied to the item itself (placed below `tylift`), its variants and fields of its
+/// variants will not be translated and have no effect. Explicit discriminants are ignored, too.
+///
+/// Example:
+///
+/// ```
+/// use tylift::tylift;
+/// use std::marker::PhantomData;
+///
+/// #[tylift]
+/// pub enum Mode {
+///     Safe,
+///     Fast,
+/// }
+///
+/// pub struct Text<M: Mode> {
+///     content: String,
+///     _marker: PhantomData<M>,
+/// }
+///
+/// impl<M: Mode> Text<M> {
+///     pub fn into_inner(self) -> String {
+///         self.content
+///     }
+/// }
+///
+/// impl Text<Safe> {
+///     pub fn from(content: Vec<u8>) -> Option<Self> {
+///         Some(Self {
+///             content: String::from_utf8(content).ok()?,
+///             _marker: PhantomData,
+///         })
+///     }
+/// }
+///
+/// impl Text<Fast> {
+///     pub fn from(content: Vec<u8>) -> Self {
+///         Self {
+///             content: unsafe { String::from_utf8_unchecked(content) },
+///             _marker: PhantomData,
+///         }
+///     }
+/// }
+///
+/// fn main() {
+///     let safe = Text::<Safe>::from(vec![0x73, 0x61, 0x66, 0x65]);
+///     let fast = Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]);
+///     assert_eq!(safe.map(Text::into_inner), Some("safe".to_owned()));
+///     assert_eq!(fast.into_inner(), "fast".to_owned());
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
-        #[cfg(feature = "unstable")]
+        #[cfg(feature = "span_errors")]
         {
             use syn::spanned::Spanned;
             item.generics
@@ -38,7 +104,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 .error("type parameters cannot be lifted to the kind-level")
                 .emit();
         }
-        #[cfg(not(feature = "unstable"))]
+        #[cfg(not(feature = "span_errors"))]
         panic!("type parameters cannot be lifted to the kind-level")
     }
 
@@ -46,7 +112,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     for variant in &item.variants {
         if variant.ident == item.ident {
-            #[cfg(feature = "unstable")]
+            #[cfg(feature = "span_errors")]
             {
                 variant
                     .ident
@@ -56,14 +122,14 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     .emit();
                 continue;
             }
-            #[cfg(not(feature = "unstable"))]
+            #[cfg(not(feature = "span_errors"))]
             panic!("name of variant matches name of enum")
         }
         let mut field_names = Vec::new();
         let mut field_types = Vec::new();
         match &variant.fields {
             Fields::Named(_) => {
-                #[cfg(feature = "unstable")]
+                #[cfg(feature = "span_erros")]
                 {
                     variant
                         .ident
@@ -73,7 +139,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         .emit();
                     continue;
                 }
-                #[cfg(not(feature = "unstable"))]
+                #[cfg(not(feature = "span_errors"))]
                 panic!("variant must not have named fields")
             }
             Fields::Unnamed(unnamed) => {
