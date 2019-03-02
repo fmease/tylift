@@ -20,6 +20,6 @@ proc-macro = true
 # path = "src/tests.rs"
 
 [dependencies]
-proc-macro2 = "0.4.26"
-syn = { version = "0.15.26", features = ["full"] }
+proc-macro2 = "0.4.27"
+syn = { version = "0.15.27", features = ["full"] }
 quote = "0.6.11"
