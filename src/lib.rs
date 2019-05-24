@@ -1,3 +1,5 @@
+#![forbid(bare_trait_objects, unused_must_use)]
+
 //! This is a libary for making type-level programming more ergonomic.
 //! With the attribute `tylift`, one can lift variants of an `enum` to the type-level.
 //!
@@ -38,8 +40,10 @@ fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
 /// The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
 /// are sealed, which means nobody is able to add new types to the kind.
 ///
-/// Attributes applied to the item itself (placed below `tylift`), its variants and fields of its
-/// variants will not be translated and have no effect. Explicit discriminants are ignored, too.
+/// Attributes (notably documentation comments) applied to the item itself and its variants will be
+/// preserved. On the other hand, attributes placed in front of fields of a variant
+/// (constructor arguments) will not be translated and thus have no effect.
+/// Explicit discriminants are ignored, too.
 ///
 /// Example:
 ///
@@ -150,9 +154,10 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
             _ => {}
         }
-        variants.push((&variant.ident, field_names, field_types));
+        variants.push((&variant.attrs, &variant.ident, field_names, field_types));
     }
 
+    let attributes = &item.attrs;
     let visibility = &item.vis;
     let kind = &item.ident;
     let clause = item.generics.where_clause;
@@ -163,16 +168,19 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut output_stream = quote! { #visibility use #kind_module::*; };
     let mut kind_module_stream = quote! {
         use super::*;
+        #(#attributes)*
         pub trait #kind: #sealed_module::#sealed_trait #clause {}
     };
     let mut sealed_module_stream = quote! {
         use super::*;
         pub trait #sealed_trait {}
     };
-    for (name, field_names, field_types) in &variants {
+    for (attributes, name, field_names, field_types) in &variants {
+        let &attributes = attributes;
         let parameters = quote! { <#(#field_names: #field_types),*> };
         let arguments = quote! { <#(#field_names),*> };
         kind_module_stream.extend(quote! {
+            #(#attributes)*
             pub struct #name #parameters (::std::marker::PhantomData <(#(#field_names),*)>);
             impl #parameters #kind for #name #arguments {}
         });

@@ -20,8 +20,10 @@ unnamed fields of types of given kind. Lifted enum types cannot be generic over 
 The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
 are sealed, which means nobody is able to add new types to the kind.
 
-Attributes applied to the item itself (placed below `tylift`), its variants and fields of its
-variants will not be translated and have no effect. Explicit discriminants are ignored, too.
+Attributes (notably documentation comments) applied to the item itself and its variants will be
+preserved. On the other hand, attributes placed in front of fields of a variant
+(constructor arguments) will not be translated and thus have no effect.
+Explicit discriminants are ignored, too.
 
 ## First Example
 
@@ -78,7 +80,7 @@ Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these 
 
 ```toml
 [dependencies]
-tylift = "0.3.0"
+tylift = "0.3.1"
 ```
 
 ## More Examples
@@ -163,9 +165,12 @@ mod __tylift_enum_BinaryTree {
 }
 ```
 
-## Tasks and Plans
+## Future Plans
 
-* create tests
-* add additional features like
+* creating tests
+* enhancing the generated names for friendlier error messages
+* adding additional features like
   * type-level functions
-  * reify-function generation
+  * generation of a reification function
+* removing the feature-gate `span_errors` once `proc_macro_diagnostic` becomes stable
+
