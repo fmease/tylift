@@ -16,7 +16,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{parse_macro_input, Fields, Ident, ItemEnum};
+use syn::{parse_macro_input, Fields, Ident, ItemEnum, ItemFn};
 
 macro_rules! identifier {
     ($fmt:literal) => {
@@ -94,7 +94,15 @@ fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
+// @Task disallow explicit discriminants and attributes on the fields of variants
+// for forward-compatibility
+pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // forward-compatibility
+    assert!(attr.is_empty());
+
+    // @Task differenciate between lifting enums vs fns
+    // @Beacon @Question does syn provide some way of specifying Either<ItemEnum, ItemFn>
+    // or we need to do this manually?
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
@@ -161,11 +169,13 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let visibility = &item.vis;
     let kind = &item.ident;
     let clause = item.generics.where_clause;
-    let kind_module = identifier!("tylift_enum_{}", kind);
+    let kind_module = identifier!("tylift_kind_{}", kind);
+    let dummy = identifier!("Dummy");
     let sealed_module = identifier!("sealed");
     let sealed_trait = identifier!("Sealed");
 
-    let mut output_stream = quote! { #visibility use #kind_module::*; };
+    let items = std::iter::once(&kind).chain(variants.iter().map(|(_, name, ..)| name));
+    let mut output_stream = quote! { #visibility use #kind_module::{#(#items),*}; };
     let mut kind_module_stream = quote! {
         use super::*;
         #(#attributes)*
@@ -188,7 +198,140 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
             impl #parameters #sealed_trait for #name #arguments {}
         });
     }
+    kind_module_stream.extend(quote! {
+        #[doc(hidden)]
+        pub enum #dummy {}
+        impl #kind for #dummy {}
+    });
+    sealed_module_stream.extend(quote! {
+        impl #sealed_trait for #dummy {}
+    });
     kind_module_stream.extend(module(sealed_module, sealed_module_stream));
     output_stream.extend(module(kind_module, kind_module_stream));
+    output_stream.into()
+}
+
+// @Temp
+#[cfg(feature = "tyfns")]
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as ItemFn);
+
+    // @Task handle those fields:
+    // item.attrs
+    // item.vis
+
+    // forward-compatibility
+    assert!(item.constness.is_none());
+    assert!(item.unsafety.is_none());
+    assert!(item.asyncness.is_none());
+    assert!(item.abi.is_none());
+    assert!(item.decl.variadic.is_none());
+
+    // @Task error message
+    assert!(item.decl.generics.params.is_empty());
+    assert!(item.decl.generics.where_clause.is_none());
+
+    let function = item.ident;
+
+    // @Note handling function arguments…
+
+    // @Question instead of two Vecs, use a Vec of tuples?
+    let mut parameters = Vec::new();
+    let mut parameter_kinds = Vec::new();
+
+    // @Temp @Question verify content later?
+    for parameter in item.decl.inputs {
+        if let syn::FnArg::Captured(syn::ArgCaptured { pat, ty, .. }) = parameter {
+            if let syn::Pat::Ident(syn::PatIdent {
+                ident,
+                by_ref,
+                mutability,
+                subpat,
+            }) = pat
+            {
+                assert!(by_ref.is_none());
+                assert!(mutability.is_none());
+                assert!(subpat.is_none());
+                parameters.push(ident);
+            } else {
+                panic!(); // @Temp
+            }
+            if let syn::Type::Path(ty) = ty {
+                assert!(ty.qself.is_none());
+                // @Temp
+                assert!(ty.path.segments.len() == 1);
+                let ty = ty.path.segments.first().unwrap();
+                let ty = ty.value();
+                assert!(ty.arguments == syn::PathArguments::None);
+                parameter_kinds.push(ty.ident.clone());
+            } else {
+                panic!(); // @Temp
+            }
+        } else {
+            panic!(); // @Temp
+        }
+    }
+
+    let mut parameters = parameters.into_iter();
+    let mut parameter_kinds = parameter_kinds.into_iter();
+
+    // @Task error handling
+    let first_parameter = parameters.next().unwrap();
+    let first_parameter_kind = parameter_kinds.next().unwrap();
+
+    // @Question maybe add some more checks (restrict it)?
+    let result_kind = if let syn::ReturnType::Type(_, type_) = item.decl.output {
+        type_
+    } else {
+        panic!(); // @Temp
+    };
+
+    // @Task handle body
+
+    // @Note DRY
+    let dummy = identifier!("Dummy");
+    let kind_module = identifier!("tylift_kind_{}", first_parameter_kind);
+    let dummy = quote! { #kind_module::#dummy };
+
+    // @Temp dummy values
+    let variants = vec![
+        Ident::new("True", Span::call_site()),
+        Ident::new("False", Span::call_site()),
+    ];
+    let result_types = vec![
+        Ident::new("False", Span::call_site()),
+        Ident::new("True", Span::call_site()),
+    ];
+
+    let function_implementation = identifier!("tylift_tyfn_{}", function);
+
+    let mut implementation_stream = quote! {};
+
+    for (variant, result_type) in variants.into_iter().zip(result_types) {
+        implementation_stream.extend(quote! {
+            impl #function_implementation for #variant {
+                type Result = #result_type;
+            }
+        });
+    }
+
+    let output_stream = quote! {
+        // @Note <#first_parameter: #first_parameter_kind, #(#parameters: #parameter_kinds)*>
+        type #function<#first_parameter: #first_parameter_kind> = <#first_parameter as #function_implementation>::Result;
+        trait #function_implementation: #first_parameter_kind {
+            type Result: #result_kind;
+        }
+        impl<#first_parameter: #first_parameter_kind> #function_implementation for #first_parameter {
+            default type Result = #dummy;
+        }
+        impl #function_implementation for #dummy {
+            type Result = #dummy;
+        }
+
+        #implementation_stream
+    };
+
     output_stream.into()
 }
