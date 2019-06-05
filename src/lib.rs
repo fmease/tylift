@@ -102,7 +102,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // @Task differenciate between lifting enums vs fns
     // @Beacon @Question does syn provide some way of specifying Either<ItemEnum, ItemFn>
-    // or we need to do this manually?
+    // or we do need to do this manually?
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
@@ -191,7 +191,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
         let arguments = quote! { <#(#field_names),*> };
         kind_module_stream.extend(quote! {
             #(#attributes)*
-            pub struct #name #parameters (::std::marker::PhantomData <(#(#field_names),*)>);
+            pub struct #name #parameters(::std::marker::PhantomData <(#(#field_names),*)>);
             impl #parameters #kind for #name #arguments {}
         });
         sealed_module_stream.extend(quote! {
@@ -288,22 +288,67 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
         panic!(); // @Temp
     };
 
-    // @Task handle body
+    // body
+    // @Task error handling
+    assert!(item.block.stmts.len() == 1);
+
+    // @Temp representations are going to change once more complex patterns are
+    // involved plus when we implement pattern naming (aka giving free bindings a meaning)
+    let mut variants = Vec::new();
+    let mut result_types = Vec::new();
+
+    // @Note @Task good error message on Semi(Expr, Semi)
+    if let syn::Stmt::Expr(expr) = &item.block.stmts[0] {
+        if let syn::Expr::Match(expr) = expr {
+            // forward-compability
+            assert!(expr.attrs.is_empty());
+
+            // @Note expr: syn::ExprMatch
+            // @Note expr to be matched on: `expr.expr`
+            // @Note arms: `expr.arms`
+
+            // @Task exhaustiveness-checking, recognizing free variables, etcetera
+            for arm in &expr.arms {
+                // forward-compability
+                assert!(arm.attrs.is_empty());
+                assert!(arm.guard.is_none());
+                // @Note ignoring `arm.leading_vert`
+
+                // @Temp @Task support or-patterns
+                assert!(arm.pats.len() == 1);
+                let pat = arm.pats.first().unwrap();
+                let pat = pat.value();
+
+                match pat {
+                    syn::Pat::Wild(pat) => unimplemented!(),
+                    // @Question PatIdent where subpat.is_none() vs PatPath?
+                    syn::Pat::Ident(pat) => {
+                        assert!(pat.by_ref.is_none());
+                        assert!(pat.mutability.is_none());
+                        assert!(pat.subpat.is_none()); // @Temp @Task
+
+                        variants.push(&pat.ident); // @Beacon
+                    }
+                    syn::Pat::Path(pat) => unimplemented!(),
+                    syn::Pat::TupleStruct(pat) => {
+                        unimplemented!()
+                    }
+                    _ => panic!(), // @Temp
+                }
+
+                result_types.push(&arm.body); // @Beacon
+            }
+        } else {
+            panic!(); // @Temp
+        }
+    } else {
+        panic!(); // @Temp
+    }
 
     // @Note DRY
     let dummy = identifier!("Dummy");
     let kind_module = identifier!("tylift_kind_{}", first_parameter_kind);
     let dummy = quote! { #kind_module::#dummy };
-
-    // @Temp dummy values
-    let variants = vec![
-        Ident::new("True", Span::call_site()),
-        Ident::new("False", Span::call_site()),
-    ];
-    let result_types = vec![
-        Ident::new("False", Span::call_site()),
-        Ident::new("True", Span::call_site()),
-    ];
 
     let function_implementation = identifier!("tylift_tyfn_{}", function);
 
@@ -319,7 +364,8 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let output_stream = quote! {
         // @Note <#first_parameter: #first_parameter_kind, #(#parameters: #parameter_kinds)*>
-        type #function<#first_parameter: #first_parameter_kind> = <#first_parameter as #function_implementation>::Result;
+        type #function<#first_parameter: #first_parameter_kind> =
+            <#first_parameter as #function_implementation>::Result;
         trait #function_implementation: #first_parameter_kind {
             type Result: #result_kind;
         }
