@@ -102,7 +102,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // @Task differenciate between lifting enums vs fns
     // @Beacon @Question does syn provide some way of specifying Either<ItemEnum, ItemFn>
-    // or we do need to do this manually?
+    // or do we need to do this manually?
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
@@ -278,6 +278,7 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut parameter_kinds = parameter_kinds.into_iter();
 
     // @Task error handling
+    // @Task handle nullary type-level functions
     let first_parameter = parameters.next().unwrap();
     let first_parameter_kind = parameter_kinds.next().unwrap();
 
@@ -303,11 +304,14 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // forward-compability
             assert!(expr.attrs.is_empty());
 
-            // @Note expr: syn::ExprMatch
             // @Note expr to be matched on: `expr.expr`
-            // @Note arms: `expr.arms`
+            // @Task assert that `expr.expr` (the expr to be matched on)
+            // is consistent with the parameter list, i.e. an identifier
+            // `X` if the parameter list consists of a sigle parameter `X: T`
+            // and a tuple otherwise
 
             // @Task exhaustiveness-checking, recognizing free variables, etcetera
+            // @Note 
             for arm in &expr.arms {
                 // forward-compability
                 assert!(arm.attrs.is_empty());
