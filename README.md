@@ -9,6 +9,10 @@ Lift enum variants to the type-level by simply adding the attribute `tylift`.
 This comes in handy for type-level programming. The crate you are looking at is
 brand new and far from polished!
 
+**Important note**: This library provides mechanisms nearly identical to the experimental
+feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
+has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
+
 The attribute promotes variants to their own types which will not be namespaced
 by current design. The enum type becomes a kind emulated by a trait. In the
 process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
@@ -164,6 +168,16 @@ mod __tylift_enum_BinaryTree {
     }
 }
 ```
+
+## TyLift Versus Const Generics
+
+Advantages of this crate over const generics:
+
+* recursive kinds which cannot be represented with const generics right now. The latter would also require
+  boxing (heap allocation)
+* once tyfns (type-lifted functions) are implemented, TyLift features pattern matching on types
+  \[Todo: Add source on restrictions of const generics\]
+* \[Todo\]
 
 ## Future Plans
 
