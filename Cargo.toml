@@ -21,7 +21,7 @@ proc-macro = true
 # path = "src/tests.rs"
 
 [dependencies]
-proc-macro2 = "0.4.30"
-syn = { version = "0.15.34", features = ["full", "extra-traits"] }
-quote = "0.6.12"
+proc-macro2 = "1.0.6"
+syn = { version = "1.0.8", features = ["full", "extra-traits"] }
+quote = "1.0.2"
 

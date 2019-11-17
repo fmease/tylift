@@ -170,7 +170,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
     let kind = &item.ident;
     let clause = item.generics.where_clause;
     let kind_module = identifier!("tylift_kind_{}", kind);
-    let dummy = identifier!("Dummy");
+    let pseudo = identifier!("Pseudo");
     let sealed_module = identifier!("sealed");
     let sealed_trait = identifier!("Sealed");
 
@@ -191,7 +191,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
         let arguments = quote! { <#(#field_names),*> };
         kind_module_stream.extend(quote! {
             #(#attributes)*
-            pub struct #name #parameters(::std::marker::PhantomData <(#(#field_names),*)>);
+            pub struct #name #parameters(::core::marker::PhantomData <(#(#field_names),*)>);
             impl #parameters #kind for #name #arguments {}
         });
         sealed_module_stream.extend(quote! {
@@ -200,11 +200,11 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
     kind_module_stream.extend(quote! {
         #[doc(hidden)]
-        pub enum #dummy {}
-        impl #kind for #dummy {}
+        pub enum #pseudo {}
+        impl #kind for #pseudo {}
     });
     sealed_module_stream.extend(quote! {
-        impl #sealed_trait for #dummy {}
+        impl #sealed_trait for #pseudo {}
     });
     kind_module_stream.extend(module(sealed_module, sealed_module_stream));
     output_stream.extend(module(kind_module, kind_module_stream));
@@ -220,20 +220,21 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // @Task handle those fields:
     // item.attrs
-    // item.vis
+
+    let function_visibility = item.vis;
 
     // forward-compatibility
-    assert!(item.constness.is_none());
-    assert!(item.unsafety.is_none());
-    assert!(item.asyncness.is_none());
-    assert!(item.abi.is_none());
-    assert!(item.decl.variadic.is_none());
+    assert!(item.sig.constness.is_none());
+    assert!(item.sig.unsafety.is_none());
+    assert!(item.sig.asyncness.is_none());
+    assert!(item.sig.abi.is_none());
+    assert!(item.sig.variadic.is_none());
 
     // @Task error message
-    assert!(item.decl.generics.params.is_empty());
-    assert!(item.decl.generics.where_clause.is_none());
+    assert!(item.sig.generics.params.is_empty());
+    assert!(item.sig.generics.where_clause.is_none());
 
-    let function = item.ident;
+    let function = item.sig.ident;
 
     // @Note handling function arguments…
 
@@ -242,15 +243,19 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut parameter_kinds = Vec::new();
 
     // @Temp @Question verify content later?
-    for parameter in item.decl.inputs {
-        if let syn::FnArg::Captured(syn::ArgCaptured { pat, ty, .. }) = parameter {
+    for parameter in item.sig.inputs {
+        if let syn::FnArg::Typed(syn::PatType { attrs, pat, ty, .. }) = parameter {
+            assert!(attrs.is_empty());
+
             if let syn::Pat::Ident(syn::PatIdent {
+                attrs,
                 ident,
                 by_ref,
                 mutability,
                 subpat,
-            }) = pat
+            }) = *pat
             {
+                assert!(attrs.is_empty());
                 assert!(by_ref.is_none());
                 assert!(mutability.is_none());
                 assert!(subpat.is_none());
@@ -258,19 +263,18 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
             } else {
                 panic!(); // @Temp
             }
-            if let syn::Type::Path(ty) = ty {
+            if let syn::Type::Path(ty) = *ty {
                 assert!(ty.qself.is_none());
                 // @Temp
                 assert!(ty.path.segments.len() == 1);
                 let ty = ty.path.segments.first().unwrap();
-                let ty = ty.value();
                 assert!(ty.arguments == syn::PathArguments::None);
                 parameter_kinds.push(ty.ident.clone());
             } else {
                 panic!(); // @Temp
             }
         } else {
-            panic!(); // @Temp
+            panic!("illegal parameter ilk"); // @Temp
         }
     }
 
@@ -283,7 +287,7 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let first_parameter_kind = parameter_kinds.next().unwrap();
 
     // @Question maybe add some more checks (restrict it)?
-    let result_kind = if let syn::ReturnType::Type(_, type_) = item.decl.output {
+    let result_kind = if let syn::ReturnType::Type(_, type_) = item.sig.output {
         type_
     } else {
         panic!(); // @Temp
@@ -311,20 +315,14 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // and a tuple otherwise
 
             // @Task exhaustiveness-checking, recognizing free variables, etcetera
-            // @Note 
+            // @Note
             for arm in &expr.arms {
                 // forward-compability
                 assert!(arm.attrs.is_empty());
                 assert!(arm.guard.is_none());
-                // @Note ignoring `arm.leading_vert`
 
-                // @Temp @Task support or-patterns
-                assert!(arm.pats.len() == 1);
-                let pat = arm.pats.first().unwrap();
-                let pat = pat.value();
-
-                match pat {
-                    syn::Pat::Wild(pat) => unimplemented!(),
+                match &arm.pat {
+                    syn::Pat::Wild(_pat) => unimplemented!(),
                     // @Question PatIdent where subpat.is_none() vs PatPath?
                     syn::Pat::Ident(pat) => {
                         assert!(pat.by_ref.is_none());
@@ -333,26 +331,24 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
                         variants.push(&pat.ident); // @Beacon
                     }
-                    syn::Pat::Path(pat) => unimplemented!(),
-                    syn::Pat::TupleStruct(pat) => {
-                        unimplemented!()
-                    }
+                    syn::Pat::Path(_pat) => unimplemented!(),
+                    syn::Pat::TupleStruct(_pat) => unimplemented!(),
                     _ => panic!(), // @Temp
                 }
 
                 result_types.push(&arm.body); // @Beacon
             }
         } else {
-            panic!(); // @Temp
+            panic!("expected match expression"); // @Temp
         }
     } else {
         panic!(); // @Temp
     }
 
     // @Note DRY
-    let dummy = identifier!("Dummy");
+    let pseudo = identifier!("Pseudo");
     let kind_module = identifier!("tylift_kind_{}", first_parameter_kind);
-    let dummy = quote! { #kind_module::#dummy };
+    let pseudo = quote! { #kind_module::#pseudo };
 
     let function_implementation = identifier!("tylift_tyfn_{}", function);
 
@@ -368,16 +364,18 @@ pub fn __lift_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let output_stream = quote! {
         // @Note <#first_parameter: #first_parameter_kind, #(#parameters: #parameter_kinds)*>
-        type #function<#first_parameter: #first_parameter_kind> =
+        // allow type alias bounds for documentation purposes
+        #[allow(type_alias_bounds)]
+        #function_visibility type #function<#first_parameter: #first_parameter_kind> =
             <#first_parameter as #function_implementation>::Result;
         trait #function_implementation: #first_parameter_kind {
             type Result: #result_kind;
         }
         impl<#first_parameter: #first_parameter_kind> #function_implementation for #first_parameter {
-            default type Result = #dummy;
+            default type Result = #pseudo;
         }
-        impl #function_implementation for #dummy {
-            type Result = #dummy;
+        impl #function_implementation for #pseudo {
+            type Result = #pseudo;
         }
 
         #implementation_stream
