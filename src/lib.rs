@@ -181,7 +181,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
         let arguments = quote! { <#(#field_names),*> };
         kind_module_stream.extend(quote! {
             #(#attributes)*
-            pub struct #name #parameters (::std::marker::PhantomData <(#(#field_names),*)>);
+            pub struct #name #parameters (::core::marker::PhantomData <(#(#field_names),*)>);
             impl #parameters #kind for #name #arguments {}
         });
         sealed_module_stream.extend(quote! {

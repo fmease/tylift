@@ -13,7 +13,7 @@ brand new and far from polished!
 feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
 has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
 
-The attribute promotes variants to their own types which will not be namespaced
+The attribute promotes variants to their own types which will **not** be namespaced
 by current design. The enum type becomes a kind emulated by a trait. In the
 process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
 mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be
@@ -122,9 +122,9 @@ pub use __tylift_enum_Bool::*;
 mod __tylift_enum_Bool {
     use super::*;
     pub trait Bool: __sealed::__Sealed {}
-    pub struct False(::std::marker::PhantomData<()>);
+    pub struct False(::core::marker::PhantomData<()>);
     impl Bool for False {}
-    pub struct True(::std::marker::PhantomData<()>);
+    pub struct True(::core::marker::PhantomData<()>);
     impl Bool for True {}
     mod __sealed {
         use super::*;
@@ -138,9 +138,9 @@ pub(crate) use __tylift_enum_Nat::*;
 mod __tylift_enum_Nat {
     use super::*;
     pub trait Nat: __sealed::__Sealed {}
-    pub struct Zero(::std::marker::PhantomData<()>);
+    pub struct Zero(::core::marker::PhantomData<()>);
     impl Nat for Zero {}
-    pub struct Succ<__T0: Nat>(::std::marker::PhantomData<(__T0)>);
+    pub struct Succ<__T0: Nat>(::core::marker::PhantomData<(__T0)>);
     impl<__T0: Nat> Nat for Succ<__T0> {}
     mod __sealed {
         use super::*;
@@ -154,10 +154,10 @@ use __tylift_enum_BinaryTree::*;
 mod __tylift_enum_BinaryTree {
     use super::*;
     pub trait BinaryTree: __sealed::__Sealed {}
-    pub struct Leaf(::std::marker::PhantomData<()>);
+    pub struct Leaf(::core::marker::PhantomData<()>);
     impl BinaryTree for Leaf {}
     pub struct Branch<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree>(
-        ::std::marker::PhantomData<(__T0, __T1, __T2)>,
+        ::core::marker::PhantomData<(__T0, __T1, __T2)>,
     );
     impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> BinaryTree for Branch<__T0, __T1, __T2> {}
     mod __sealed {
