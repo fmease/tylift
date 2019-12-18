@@ -62,9 +62,9 @@ impl Text<Safe> {
 }
 
 impl Text<Fast> {
-    pub fn from(content: Vec<u8>) -> Self {
+    pub unsafe fn from(content: Vec<u8>) -> Self {
         Self {
-            content: unsafe { String::from_utf8_unchecked(content) },
+            content: String::from_utf8_unchecked(content),
             _marker: PhantomData,
         }
     }
@@ -72,7 +72,7 @@ impl Text<Fast> {
 
 fn main() {
     let safe = Text::<Safe>::from(vec![0x73, 0x61, 0x66, 0x65]);
-    let fast = Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]);
+    let fast = unsafe { Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]) };
     assert_eq!(safe.map(Text::into_inner), Some("safe".to_owned()));
     assert_eq!(fast.into_inner(), "fast".to_owned());
 }
@@ -174,13 +174,14 @@ mod __tylift_enum_BinaryTree {
 Advantages of this crate over const generics:
 
 * recursive kinds which cannot be represented with const generics right now. The latter would also require
-  boxing (heap allocation)
+  explicit boxing
 * once tyfns (type-lifted functions) are implemented, TyLift features pattern matching on types
   \[Todo: Add source on restrictions of const generics\]
 * \[Todo\]
 
 ## Future Plans
 
+* replacing the introductery example with something more reasonable
 * creating tests
 * enhancing the generated names for friendlier error messages
 * adding additional features like
