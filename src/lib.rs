@@ -1,4 +1,4 @@
-#![forbid(bare_trait_objects, unused_must_use)]
+#![forbid(rust_2018_idioms, unused_must_use)]
 
 //! This is a libary for making type-level programming more ergonomic.
 //! With the attribute `tylift`, one can lift variants of an `enum` to the type-level.

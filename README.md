@@ -29,6 +29,8 @@ preserved. On the other hand, attributes placed in front of fields of a variant
 (constructor arguments) will not be translated and thus have no effect.
 Explicit discriminants are ignored, too.
 
+Expanded code works in `#![no_std]`-environments.
+
 ## First Example
 
 ```rust
@@ -84,7 +86,7 @@ Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these 
 
 ```toml
 [dependencies]
-tylift = "0.3.1"
+tylift = "0.3.2"
 ```
 
 ## More Examples
