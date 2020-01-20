@@ -31,6 +31,21 @@ fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
     quote! { mod #name { #content } }
 }
 
+macro_rules! report {
+    ($span:expr, $message:literal $(, $next:tt )?) => {
+    #[cfg(feature = "span_errors")]
+    {
+        $span
+            .unstable()
+            .error($message)
+            .emit();
+        $( $next )?
+    }
+    #[cfg(not(feature = "span_errors"))]
+    panic!($message)
+    }
+}
+
 /// The attribute promotes variants to their own types which will not be namespaced
 /// by current design. The enum type becomes a kind emulated by a trait. In the
 /// process, the original type gets replaced.
@@ -98,53 +113,33 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemEnum);
 
     if !item.generics.params.is_empty() {
-        #[cfg(feature = "span_errors")]
-        {
-            use syn::spanned::Spanned;
-            item.generics
-                .params
-                .span()
-                .unstable()
-                .error("type parameters cannot be lifted to the kind-level")
-                .emit();
-        }
-        #[cfg(not(feature = "span_errors"))]
-        panic!("type parameters cannot be lifted to the kind-level")
+        #[allow(unused_imports)]
+        use syn::spanned::Spanned;
+        report!(
+            item.generics.params.span(),
+            "type parameters cannot be lifted to the kind-level"
+        );
     }
 
     let mut variants = Vec::new();
 
     for variant in &item.variants {
         if variant.ident == item.ident {
-            #[cfg(feature = "span_errors")]
-            {
-                variant
-                    .ident
-                    .span()
-                    .unstable()
-                    .error("name of variant matches name of enum")
-                    .emit();
-                continue;
-            }
-            #[cfg(not(feature = "span_errors"))]
-            panic!("name of variant matches name of enum")
+            report!(
+                variant.ident.span(),
+                "name of variant matches name of enum",
+                continue
+            );
         }
         let mut field_names = Vec::new();
         let mut field_types = Vec::new();
         match &variant.fields {
             Fields::Named(_) => {
-                #[cfg(feature = "span_erros")]
-                {
-                    variant
-                        .ident
-                        .span()
-                        .unstable()
-                        .error("variant must not have named fields")
-                        .emit();
-                    continue;
-                }
-                #[cfg(not(feature = "span_errors"))]
-                panic!("variant must not have named fields")
+                report!(
+                    variant.ident.span(),
+                    "variant must not have named fields",
+                    continue
+                );
             }
             Fields::Unnamed(unnamed) => {
                 for (index, field) in unnamed.unnamed.iter().enumerate() {
