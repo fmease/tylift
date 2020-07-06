@@ -120,8 +120,8 @@ And after:
 ```rust
 use tylift::tylift;
 
-pub use __tylift_enum_Bool::*;
-mod __tylift_enum_Bool {
+pub use __tylift_kind_Bool::*;
+mod __tylift_kind_Bool {
     use super::*;
     pub trait Bool: __sealed::__Sealed {}
     pub struct False(::core::marker::PhantomData<()>);
@@ -136,8 +136,8 @@ mod __tylift_enum_Bool {
     }
 }
 
-pub(crate) use __tylift_enum_Nat::*;
-mod __tylift_enum_Nat {
+pub(crate) use __tylift_kind_Nat::*;
+mod __tylift_kind_Nat {
     use super::*;
     pub trait Nat: __sealed::__Sealed {}
     pub struct Zero(::core::marker::PhantomData<()>);
@@ -152,8 +152,8 @@ mod __tylift_enum_Nat {
     }
 }
 
-use __tylift_enum_BinaryTree::*;
-mod __tylift_enum_BinaryTree {
+use __tylift_kind_BinaryTree::*;
+mod __tylift_kind_BinaryTree {
     use super::*;
     pub trait BinaryTree: __sealed::__Sealed {}
     pub struct Leaf(::core::marker::PhantomData<()>);
@@ -168,6 +168,28 @@ mod __tylift_enum_BinaryTree {
         impl __Sealed for Leaf {}
         impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> __Sealed for Branch<__T0, __T1, __T2> {}
     }
+}
+```
+
+### Manually Writing a Function
+
+```rust
+// for kind `Bool` from above
+type Not<B> = <B as NotImpl>::Result;
+trait NotImpl: Bool { type Result: Bool; }
+impl NotImpl for False { type Result = True; }
+impl NotImpl for True { type Result = False; }
+
+// for kind `Nat` from above
+type Add<N, M> = <N as AddImpl<M>>::Result;
+trait AddImpl<M: Nat>: Nat { type Result: Nat }
+impl<M: Nat> AddImpl<M> for Zero { type Result = M; }
+impl<N: Nat, M: Nat> AddImpl<M> for Succ<N>
+// where clause necessary because the type system does not know that
+// the trait is sealed (only the module system knows)
+where N: AddImpl<Succ<M>>
+{
+    type Result = Add<N, Succ<M>>;
 }
 ```
 

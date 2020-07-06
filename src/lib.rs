@@ -33,16 +33,16 @@ fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
 
 macro_rules! report {
     ($span:expr, $message:literal $(, $next:tt )?) => {
-    #[cfg(feature = "span_errors")]
-    {
-        $span
-            .unstable()
-            .error($message)
-            .emit();
-        $( $next )?
-    }
-    #[cfg(not(feature = "span_errors"))]
-    panic!($message)
+        #[cfg(feature = "span_errors")]
+        {
+            $span
+                .unstable()
+                .error($message)
+                .emit();
+            $( $next )?
+        }
+        #[cfg(not(feature = "span_errors"))]
+        panic!($message)
     }
 }
 
@@ -156,7 +156,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let visibility = &item.vis;
     let kind = &item.ident;
     let clause = item.generics.where_clause;
-    let kind_module = identifier!("tylift_enum_{}", kind);
+    let kind_module = identifier!("tylift_kind_{}", kind);
     let sealed_module = identifier!("sealed");
     let sealed_trait = identifier!("Sealed");
 
