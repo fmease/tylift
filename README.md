@@ -83,7 +83,7 @@ Add these lines to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tylift = "0.3.3"
+tylift = "0.3.4"
 ```
 
 Compability with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
