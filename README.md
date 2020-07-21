@@ -11,11 +11,10 @@ This comes in handy for type-level programming.
 feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
 has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
 
-The attribute promotes variants to their own types which will **not** be namespaced
-by current design. The enum type becomes a _kind_ emulated by a trait. In the
-process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
-mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be
-read as "type parameter `B` of kind `Bool`".
+The attribute promotes variants to their own types which will are by default not namespaced.
+The enum type becomes a _kind_ emulated by a trait. In the process, the original type gets replaced.
+In Rust, the syntax of trait bounds (`:`) beautifully mirror the syntax of type annotations.
+Thus, the snippet `B: Bool` can also be read as "type parameter `B` of kind `Bool`".
 
 As of right now, there is no automated way to reify the lifted variants. Variants can hold
 unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
@@ -114,6 +113,18 @@ enum BinaryTree {
     Leaf,
     Branch(BinaryTree, Nat, BinaryTree),
 }
+
+#[tylift(mod)] // put all 3 items into the module `Power`
+pub enum Power {
+    On,
+    Off,
+}
+
+#[tylift(mod direction)] // put all 3 items into the module `direction`
+pub(crate) enum Direction {
+    Up,
+    Down,
+}
 ```
 
 And after expansion below. It's partially hygienic, identifiers prefixed with double underscores are unhygienic.
@@ -169,6 +180,36 @@ mod __kind_BinaryTree {
         pub trait Sealed {}
         impl Sealed for Leaf {}
         impl<T0: BinaryTree, T1: Nat, T2: BinaryTree> Sealed for Branch<T0, T1, T2> {}
+    }
+}
+
+pub mod Power {
+    use super::*;
+    pub trait Power: sealed::Sealed {}
+    pub struct On(::core::marker::PhantomData<()>);
+    impl Power for On {}
+    pub struct Off(::core::marker::PhantomData<()>);
+    impl Power for Off {}
+    mod sealed {
+        use super::*;
+        pub trait Sealed {}
+        impl Sealed for On {}
+        impl Sealed for Off {}
+    }
+}
+
+pub(crate) mod direction {
+    use super::*;
+    pub trait Direction: sealed::Sealed {}
+    pub struct Up(::core::marker::PhantomData<()>);
+    impl Direction for Up {}
+    pub struct Down(::core::marker::PhantomData<()>);
+    impl Direction for Down {}
+    mod sealed {
+        use super::*;
+        pub trait Sealed {}
+        impl Sealed for Up {}
+        impl Sealed for Down {}
     }
 }
 ```
