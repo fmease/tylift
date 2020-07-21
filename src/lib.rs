@@ -1,4 +1,4 @@
-#![forbid(rust_2018_idioms, unused_must_use)]
+#![warn(rust_2018_idioms, unused_must_use)] // never forbid for forward compatibility!
 
 //! This is a libary for making type-level programming more ergonomic.
 //! With the attribute `tylift`, one can lift variants of an `enum` to the type-level.
@@ -10,8 +10,6 @@
 //! `proc_macro_diagnostic` and thus requires a nightly `rustc`.
 
 #![cfg_attr(feature = "span_errors", feature(proc_macro_diagnostic))]
-
-extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};

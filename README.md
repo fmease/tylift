@@ -86,7 +86,7 @@ Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these 
 
 ```toml
 [dependencies]
-tylift = "0.3.2"
+tylift = "0.3.3"
 ```
 
 ## More Examples
