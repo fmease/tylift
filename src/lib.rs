@@ -16,13 +16,8 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{parse_macro_input, Fields, Ident, ItemEnum};
 
-macro_rules! identifier {
-    ($fmt:literal) => {
-        Ident::new(concat!("__", $fmt), Span::call_site())
-    };
-    ($fmt:literal $( $tokens:tt )+) => {
-        Ident::new(&format!(concat!("__", $fmt) $( $tokens )*), Span::call_site())
-    };
+fn identifier(identifier: &str) -> Ident {
+    Ident::new(identifier, Span::mixed_site())
 }
 
 fn module(name: Ident, content: TokenStream2) -> TokenStream2 {
@@ -44,9 +39,12 @@ macro_rules! report {
     }
 }
 
-/// The attribute promotes variants to their own types which will not be namespaced
-/// by current design. The enum type becomes a kind emulated by a trait. In the
-/// process, the original type gets replaced.
+use std::marker::PhantomData;
+/// The attribute promotes variants to their own types which will **not** be namespaced
+/// by current design. The enum type becomes a _kind_ emulated by a trait. In the
+/// process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
+/// mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be
+/// read as "type parameter `B` of kind `Bool`".
 ///
 /// As of right now, there is no automated way to reify the lifted variants. Variants can hold
 /// unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
@@ -57,6 +55,8 @@ macro_rules! report {
 /// preserved. On the other hand, attributes placed in front of fields of a variant
 /// (constructor arguments) will not be translated and thus have no effect.
 /// Explicit discriminants are ignored, too.
+///
+/// Expanded code works in `#![no_std]`-environments.
 ///
 /// Example:
 ///
@@ -91,7 +91,7 @@ macro_rules! report {
 /// }
 ///
 /// impl Text<Fast> {
-///     pub fn from(content: Vec<u8>) -> Self {
+///     pub unsafe fn from(content: Vec<u8>) -> Self {
 ///         Self {
 ///             content: unsafe { String::from_utf8_unchecked(content) },
 ///             _marker: PhantomData,
@@ -101,7 +101,7 @@ macro_rules! report {
 ///
 /// fn main() {
 ///     let safe = Text::<Safe>::from(vec![0x73, 0x61, 0x66, 0x65]);
-///     let fast = Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]);
+///     let fast = unsafe { Text::<Fast>::from(vec![0x66, 0x61, 0x73, 0x74]) };
 ///     assert_eq!(safe.map(Text::into_inner), Some("safe".to_owned()));
 ///     assert_eq!(fast.into_inner(), "fast".to_owned());
 /// }
@@ -141,7 +141,7 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
             Fields::Unnamed(unnamed) => {
                 for (index, field) in unnamed.unnamed.iter().enumerate() {
-                    field_names.push(identifier!("T{}", index));
+                    field_names.push(identifier(&format!("T{}", index)));
                     field_types.push(&field.ty);
                 }
             }
@@ -154,9 +154,11 @@ pub fn tylift(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let visibility = &item.vis;
     let kind = &item.ident;
     let clause = item.generics.where_clause;
-    let kind_module = identifier!("tylift_kind_{}", kind);
-    let sealed_module = identifier!("sealed");
-    let sealed_trait = identifier!("Sealed");
+    // note: obviously, we'd like to have `Span::def_site()` to fully hide this module from outsiders
+    // but it's still unstable unfortunately :/
+    let kind_module = Ident::new(&format!("__kind_{}", kind), Span::call_site());
+    let sealed_module = identifier("sealed");
+    let sealed_trait = identifier("Sealed");
 
     let mut output_stream = quote! { #visibility use #kind_module::*; };
     let mut kind_module_stream = quote! {

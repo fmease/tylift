@@ -2,19 +2,17 @@
 
 [![crate](https://img.shields.io/crates/v/tylift.svg)](https://crates.io/crates/tylift)
 [![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
-[![rustc](https://img.shields.io/badge/rustc-1.32+-red.svg)](https://blog.rust-lang.org/2019/01/17/Rust-1.32.0.html)
 [![license](https://img.shields.io/github/license/fmease/tylift.svg)](https://crates.io/crates/tylift/)
 
 Lift enum variants to the type-level by simply adding the attribute `tylift`.
-This comes in handy for type-level programming. The crate you are looking at is
-brand new and far from polished!
+This comes in handy for type-level programming.
 
 **Important note**: This library provides mechanisms nearly identical to the experimental
 feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
 has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
 
 The attribute promotes variants to their own types which will **not** be namespaced
-by current design. The enum type becomes a kind emulated by a trait. In the
+by current design. The enum type becomes a _kind_ emulated by a trait. In the
 process, the original type gets replaced. In Rust, the syntax of trait bounds (`:`) beautifully
 mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be
 read as "type parameter `B` of kind `Bool`".
@@ -66,7 +64,7 @@ impl Text<Safe> {
 impl Text<Fast> {
     pub unsafe fn from(content: Vec<u8>) -> Self {
         Self {
-            content: String::from_utf8_unchecked(content),
+            content: unsafe { String::from_utf8_unchecked(content) },
             _marker: PhantomData,
         }
     }
@@ -82,12 +80,15 @@ fn main() {
 
 ## Installation
 
-Works with `rustc` version 1.32 (stable) or above, Rust 2018 edition. Add these lines to your `Cargo.toml`:
+Add these lines to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 tylift = "0.3.3"
 ```
+
+Compability with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
+relied on features of `rustc` 1.32. So you might want to check them out.
 
 ## More Examples
 
@@ -115,58 +116,59 @@ enum BinaryTree {
 }
 ```
 
-And after:
+And after expansion below. It's partially hygienic, identifiers prefixed with double underscores are unhygienic.
+The reason is current API limitations of `proc_macro`.
 
 ```rust
 use tylift::tylift;
 
-pub use __tylift_kind_Bool::*;
-mod __tylift_kind_Bool {
+pub use __kind_Bool::*;
+mod __kind_Bool {
     use super::*;
-    pub trait Bool: __sealed::__Sealed {}
+    pub trait Bool: sealed::Sealed {}
     pub struct False(::core::marker::PhantomData<()>);
     impl Bool for False {}
     pub struct True(::core::marker::PhantomData<()>);
     impl Bool for True {}
-    mod __sealed {
+    mod sealed {
         use super::*;
-        pub trait __Sealed {}
-        impl __Sealed for False {}
-        impl __Sealed for True {}
+        pub trait Sealed {}
+        impl Sealed for False {}
+        impl Sealed for True {}
     }
 }
 
-pub(crate) use __tylift_kind_Nat::*;
-mod __tylift_kind_Nat {
+pub(crate) use __kind_Nat::*;
+mod __kind_Nat {
     use super::*;
-    pub trait Nat: __sealed::__Sealed {}
+    pub trait Nat: sealed::Sealed {}
     pub struct Zero(::core::marker::PhantomData<()>);
     impl Nat for Zero {}
-    pub struct Succ<__T0: Nat>(::core::marker::PhantomData<(__T0)>);
-    impl<__T0: Nat> Nat for Succ<__T0> {}
-    mod __sealed {
+    pub struct Succ<T0: Nat>(::core::marker::PhantomData<(T0)>);
+    impl<T0: Nat> Nat for Succ<T0> {}
+    mod sealed {
         use super::*;
-        pub trait __Sealed {}
-        impl __Sealed for Zero {}
-        impl<__T0: Nat> __Sealed for Succ<__T0> {}
+        pub trait Sealed {}
+        impl Sealed for Zero {}
+        impl<T0: Nat> Sealed for Succ<T0> {}
     }
 }
 
-use __tylift_kind_BinaryTree::*;
-mod __tylift_kind_BinaryTree {
+use __kind_BinaryTree::*;
+mod __kind_BinaryTree {
     use super::*;
-    pub trait BinaryTree: __sealed::__Sealed {}
+    pub trait BinaryTree: sealed::Sealed {}
     pub struct Leaf(::core::marker::PhantomData<()>);
     impl BinaryTree for Leaf {}
-    pub struct Branch<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree>(
-        ::core::marker::PhantomData<(__T0, __T1, __T2)>,
+    pub struct Branch<T0: BinaryTree, T1: Nat, T2: BinaryTree>(
+        ::core::marker::PhantomData<(T0, T1, T2)>,
     );
-    impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> BinaryTree for Branch<__T0, __T1, __T2> {}
-    mod __sealed {
+    impl<T0: BinaryTree, T1: Nat, T2: BinaryTree> BinaryTree for Branch<T0, T1, T2> {}
+    mod sealed {
         use super::*;
-        pub trait __Sealed {}
-        impl __Sealed for Leaf {}
-        impl<__T0: BinaryTree, __T1: Nat, __T2: BinaryTree> __Sealed for Branch<__T0, __T1, __T2> {}
+        pub trait Sealed {}
+        impl Sealed for Leaf {}
+        impl<T0: BinaryTree, T1: Nat, T2: BinaryTree> Sealed for Branch<T0, T1, T2> {}
     }
 }
 ```
@@ -197,17 +199,14 @@ where N: AddImpl<Succ<M>>
 
 Advantages of this crate over const generics:
 
-* recursive kinds which cannot be represented with const generics right now. The latter would also require
-  explicit boxing
-* once tyfns (type-lifted functions) are implemented, TyLift features pattern matching on types
-  \[Todo: Add source on restrictions of const generics\]
-* \[Todo\]
+* recursive kinds which cannot be represented with const generics right now.
+  The latter would also require _explicit boxing_
+* \[not sure what else\]
 
 ## Future Plans
 
 * replacing the introductery example with something more reasonable
 * creating tests
-* enhancing the generated names for friendlier error messages
 * adding additional features like
   * type-level functions
   * generation of a reification function
