@@ -130,7 +130,9 @@ macro_rules! report {
 ///
 /// #[tylift(mod direction)] // put all 3 items into the module `direction`
 /// pub(crate) enum Direction {
+///     /// Higher and higher!
 ///     Up,
+///     /// Lower and lower...
 ///     Down,
 /// }
 /// ```

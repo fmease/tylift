@@ -122,7 +122,9 @@ pub enum Power {
 
 #[tylift(mod direction)] // put all 3 items into the module `direction`
 pub(crate) enum Direction {
+    /// Higher and higher!
     Up,
+    /// Lower and lower...
     Down,
 }
 ```
@@ -201,8 +203,10 @@ pub mod Power {
 pub(crate) mod direction {
     use super::*;
     pub trait Direction: sealed::Sealed {}
+    /// Higher and higher!
     pub struct Up(::core::marker::PhantomData<()>);
     impl Direction for Up {}
+    /// Lower and lower...
     pub struct Down(::core::marker::PhantomData<()>);
     impl Direction for Down {}
     mod sealed {
