@@ -4,7 +4,7 @@
 [![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
 [![license](https://img.shields.io/github/license/fmease/tylift.svg)](https://crates.io/crates/tylift/)
 
-Lift enum variants to the type-level by simply adding the attribute `tylift`.
+Lift enum variants to the type-level simply by adding the attribute `tylift`.
 This comes in handy for type-level programming.
 
 **Important note**: This library provides mechanisms nearly identical to the experimental
@@ -86,7 +86,7 @@ Add these lines to your `Cargo.toml`:
 tylift = "0.3.4"
 ```
 
-Compability with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
+Compatibility with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
 relied on features of `rustc` 1.32. So you might want to check them out.
 
 ## More Examples
@@ -246,6 +246,7 @@ Advantages of this crate over const generics:
 
 * recursive kinds which cannot be represented with const generics right now.
   The latter would also require _explicit boxing_
+* (works on stable)
 * \[not sure what else\]
 
 ## Future Plans
