@@ -1,4 +1,4 @@
-# TyLift
+# tylift
 
 [![crate](https://img.shields.io/crates/v/tylift.svg)](https://crates.io/crates/tylift)
 [![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
@@ -11,7 +11,7 @@ This comes in handy for type-level programming.
 feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
 has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
 
-The attribute promotes variants to their own types which will are by default not namespaced.
+The attribute promotes variants to their own types which are not namespaced by default.
 The enum type becomes a _kind_ emulated by a trait. In the process, the original type gets replaced.
 In Rust, the syntax of trait bounds (`:`) beautifully mirror the syntax of type annotations.
 Thus, the snippet `B: Bool` can also be read as "type parameter `B` of kind `Bool`".
@@ -240,7 +240,7 @@ where N: AddImpl<Succ<M>>
 }
 ```
 
-## TyLift Versus Const Generics
+## tylift Versus Const Generics
 
 Advantages of this crate over const generics:
 
