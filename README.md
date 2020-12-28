@@ -4,29 +4,16 @@
 [![documentation](https://docs.rs/tylift/badge.svg)](https://docs.rs/tylift)
 [![license](https://img.shields.io/github/license/fmease/tylift.svg)](https://crates.io/crates/tylift/)
 
-Lift enum variants to the type-level by simply adding the attribute `tylift`.
-This comes in handy for type-level programming.
+Lift enum variants to the type-level simply by adding the attribute `tylift`. This comes in handy for [type-level programming](https://willcrichton.net/notes/type-level-programming/).
 
 **Important note**: This library provides mechanisms nearly identical to the experimental
-feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md) which
-has not been fully implemented yet. See respective section below on why this crate stays relevant nonetheless.
+feature [const generics](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md)/[min const genercis](https://github.com/rust-lang/rust/issues/74878) which has not been fully implemented yet. See the respective section below for more information.
 
-The attribute promotes variants to their own types which are not namespaced by default.
-The enum type becomes a _kind_ emulated by a trait. In the process, the original type gets replaced.
-In Rust, the syntax of trait bounds (`:`) beautifully mirror the syntax of type annotations.
-Thus, the snippet `B: Bool` can also be read as "type parameter `B` of kind `Bool`".
+The attribute promotes enum variants to their own types. The enum type becomes a [_kind_](https://en.wikipedia.org/wiki/Kind_(type_theory)) – the type of a type – emulated by a trait, replacing the original type declaration. In Rust, the syntax of trait bounds (`:`) beautifully mirror the syntax of type annotations. Thus, the snippet `B: Bool` can also be read as "type parameter `B` of kind `Bool`".
 
-As of right now, there is no automated way to reify the lifted variants. Variants can hold
-unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
-The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
-are sealed, which means nobody is able to add new types to the kind.
+Traits representing kinds are _sealed_, which means nobody is able to add new types to the kind. Variants can hold (unnamed) fields of types of a given kind. Attributes (notably documentation comments) applied to the item itself and its variants will be preserved. Expanded code works in `#![no_std]`-environments.
 
-Attributes (notably documentation comments) applied to the item itself and its variants will be
-preserved. On the other hand, attributes placed in front of fields of a variant
-(constructor arguments) will not be translated and thus have no effect.
-Explicit discriminants are ignored, too.
-
-Expanded code works in `#![no_std]`-environments.
+As of right now, there is no automated way to _reify_ the lifted variants (i.e. map them to their term-level counterpart). Lifted enum types can _not_ be generic over kinds.
 
 ## First Example
 
@@ -89,6 +76,10 @@ tylift = "0.3.4"
 Compability with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
 relied on features of `rustc` 1.32. So you might want to check them out.
 
+### Cargo Features
+
+The feature-flag `span_errors` drastically improves error messages by taking advantage of the span information of a token. It uses the experimental feature `proc_macro_diagnostic` and thus requires a nightly `rustc`.
+
 ## More Examples
 
 Code before the macro expansion:
@@ -129,8 +120,7 @@ pub(crate) enum Direction {
 }
 ```
 
-And after expansion below. It's partially hygienic, identifiers prefixed with double underscores are unhygienic.
-The reason is current API limitations of `proc_macro`.
+And after expansion below. It's partially [hygienic](https://en.wikipedia.org/wiki/Hygienic_macro); generated identifiers which are unhygienic because of current limitations of the `proc_macro` API are prefixed with double underscores (`__`) to lower the change of name collisions.
 
 ```rust
 use tylift::tylift;
@@ -218,17 +208,23 @@ pub(crate) mod direction {
 }
 ```
 
-### Manually Writing a Function
+### Manually Writing a Type-Level Function
+
+Type-level function `Not` from kind `Bool` to `Bool` (kind defined in previous section):
 
 ```rust
-// for kind `Bool` from above
 type Not<B> = <B as NotImpl>::Result;
+
 trait NotImpl: Bool { type Result: Bool; }
 impl NotImpl for False { type Result = True; }
 impl NotImpl for True { type Result = False; }
+```
 
-// for kind `Nat` from above
+Type-level function `Add` from two `Nat`s to `Nat` (kind defined in previous section):
+
+```rust
 type Add<N, M> = <N as AddImpl<M>>::Result;
+
 trait AddImpl<M: Nat>: Nat { type Result: Nat }
 impl<M: Nat> AddImpl<M> for Zero { type Result = M; }
 impl<N: Nat, M: Nat> AddImpl<M> for Succ<N>
@@ -242,18 +238,25 @@ where N: AddImpl<Succ<M>>
 
 ## tylift Versus Const Generics
 
-Advantages of this crate over const generics:
+**Advantages** of this crate over const generics:
 
 * recursive kinds which cannot be represented with const generics right now.
   The latter would also require _explicit boxing_
-* \[not sure what else\]
+* compatibility with older rust versions
+
+Obviously, these are not _that_ convincing arguments. Consider this crate as **a study** rather than something of value. Maybe you can learn from its code.
+
+**Disadvantages**:
+
+* requires an additional dependency (`tylift`) with a heavy transitive dependency on `syn`
+* worse tooling
+* atrociously hairy type-level functions compared to `const fn`s which are compatible with const generics, see [const evaluatable checked](https://github.com/rust-lang/rust/issues/76560)
 
 ## Future Plans
 
 * replacing the introductery example with something more reasonable
 * creating tests
 * adding additional features like
-  * type-level functions
-  * generation of a reification function
+  * an attribute to lift functions to type-level ones
+  * generating reification functions
 * removing the feature-gate `span_errors` once `proc_macro_diagnostic` becomes stable
-

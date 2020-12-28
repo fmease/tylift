@@ -3,7 +3,7 @@
 //! This is a libary for making type-level programming more ergonomic.
 //! With the attribute `tylift`, one can lift variants of an `enum` to the type-level.
 //!
-//! ## Optional Features
+//! ## `cargo` Features
 //!
 //! The feature-flag `span_errors` drastically improves error messages by taking
 //! advantage of the span information of a token. It uses the experimental feature
@@ -39,22 +39,21 @@ macro_rules! report {
     }
 }
 
-/// The attribute promotes variants to their own types which will are by default not namespaced.
-/// The enum type becomes a _kind_ emulated by a trait. In the process, the original type gets replaced.
+/// The attribute promotes enum variants to their own types.
+/// The enum type becomes a [_kind_](https://en.wikipedia.org/wiki/Kind_(type_theory))
+/// – the type of a type – emulated by a trait, replacing the original type declaration.
 /// In Rust, the syntax of trait bounds (`:`) beautifully mirror the syntax of type annotations.
 /// Thus, the snippet `B: Bool` can also be read as "type parameter `B` of kind `Bool`".
 ///
-/// As of right now, there is no automated way to reify the lifted variants. Variants can hold
-/// unnamed fields of types of given kind. Lifted enum types cannot be generic over kinds.
-/// The promoted variants inherit the visibility of the lifted enum. Traits representing kinds
-/// are sealed, which means nobody is able to add new types to the kind.
+/// Traits representing kinds are _sealed_, which means nobody is able to add new types to
+/// the kind. Variants can hold (unnamed) fields of types of a given kind.
+/// Attributes (notably documentation comments) applied to the item itself and its variants will
+/// be preserved. Expanded code works in `#![no_std]`-environments.
 ///
-/// Attributes (notably documentation comments) applied to the item itself and its variants will be
-/// preserved. On the other hand, attributes placed in front of fields of a variant
-/// (constructor arguments) will not be translated and thus have no effect.
-/// Explicit discriminants are ignored, too.
-///
-/// Expanded code works in `#![no_std]`-environments.
+/// As of right now, there is no automated way to _reify_ the lifted variants (i.e. map them to
+/// their term-level counterpart). Lifted enum types can _not_ be generic over kinds.
+/// Attributes placed in front of fields of a variant (constructor arguments) will not be translated
+/// and thus have no effect.
 ///
 /// Examples:
 ///
