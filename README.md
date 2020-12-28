@@ -73,7 +73,7 @@ Add these lines to your `Cargo.toml`:
 tylift = "0.3.4"
 ```
 
-Compability with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
+Compatibility with older `rustc` versions is currently not verified. Older versions of this crate (≤ 0.3.2) only
 relied on features of `rustc` 1.32. So you might want to check them out.
 
 ### Cargo Features
