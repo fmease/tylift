@@ -25,17 +25,20 @@ fn module(vis: &syn::Visibility, name: Ident, content: TokenStream2) -> TokenStr
 }
 
 macro_rules! report {
-    ($span:expr, $message:literal $(, $next:tt )?) => {
+    ($location:expr, $message:literal $(, $continuation:tt )?) => {
         #[cfg(feature = "span_errors")]
         {
-            $span
-                .unstable()
+            $location
+                .span()
+                .unwrap()
                 .error($message)
                 .emit();
-            $( $next )?
+            $( $continuation )?
         }
         #[cfg(not(feature = "span_errors"))]
-        panic!($message)
+        return syn::parse::Error::new_spanned(&$location, $message)
+            .into_compile_error()
+            .into();
     }
 }
 
@@ -151,7 +154,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(unused_imports)]
         use syn::spanned::Spanned;
         report!(
-            item.generics.params.span(),
+            item.generics.params,
             "type parameters cannot be lifted to the kind-level"
         );
     }
@@ -161,7 +164,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
     for variant in &item.variants {
         if variant.ident == item.ident {
             report!(
-                variant.ident.span(),
+                variant.ident,
                 "name of variant matches name of enum",
                 continue
             );
@@ -171,7 +174,7 @@ pub fn tylift(attr: TokenStream, item: TokenStream) -> TokenStream {
         match &variant.fields {
             Fields::Named(_) => {
                 report!(
-                    variant.ident.span(),
+                    variant.ident,
                     "variant must not have named fields",
                     continue
                 );

@@ -1,6 +1,6 @@
 [package]
 name = "tylift"
-version = "0.3.4"
+version = "0.3.5"
 description = "Lift enum variants to the type-level."
 license = "MIT"
 repository = "https://github.com/fmease/tylift"
@@ -20,6 +20,6 @@ proc-macro = true
 # path = "src/tests.rs"
 
 [dependencies]
-proc-macro2 = "1.0.19"
-syn = { version = "1.0.35", features = ["full"] }
-quote = "1.0.7"
+proc-macro2 = "1.0.24"
+syn = { version = "1.0.63", features = ["full"] }
+quote = "1.0.9"
